@@ -128,10 +128,10 @@ describe("🚩 Challenge: 🎲 Dice Game", function () {
       const deployerCurrentBalance = await provider.getBalance(deployer.address);
       console.log("\t", "💲 New RiggedRoll balance: ", ethers.formatEther(deployerCurrentBalance));
 
-      expect(
-        deployerPrevBalance < deployerCurrentBalance,
-        "Error when expecting RiggedRoll balance to increase when calling withdraw",
-      ).to.true;
+      expect(deployerCurrentBalance).to.be.greaterThan(
+        deployerPrevBalance,
+        "Error when expecting deployer balance to increase when calling withdraw",
+      );
     });
   });
 });
