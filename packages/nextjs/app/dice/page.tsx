@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { NextPage } from "next";
 import { Address as AddressType, formatEther, parseEther } from "viem";
+import { useAccount } from "wagmi";
 import { Amount, Roll, RollEvents, Winner, WinnerEvents } from "~~/app/dice/_components";
-import { Address } from "~~/components/scaffold-eth";
+import { Address, EtherInput } from "~~/components/scaffold-eth";
 import {
   useScaffoldContract,
   useScaffoldEventHistory,
@@ -17,8 +18,10 @@ const ROLL_ETH_VALUE = "0.002";
 const MAX_TABLE_ROWS = 10;
 
 const DiceGame: NextPage = () => {
+  const { address } = useAccount();
   const [rolls, setRolls] = useState<Roll[]>([]);
   const [winners, setWinners] = useState<Winner[]>([]);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -69,12 +72,19 @@ const DiceGame: NextPage = () => {
     ) {
       setIsRolling(false);
 
-      setWinners(
-        winnerHistoryData?.map(({ args }) => ({
-          address: args.winner as AddressType,
-          amount: args.amount as bigint,
-        })) || [],
-      );
+      const validWinners: Winner[] =
+        winnerHistoryData
+          ?.map(event => {
+            // Handle case where args might be undefined
+            if (!event?.args) return null;
+            return {
+              address: event.args.winner as AddressType,
+              amount: event.args.amount as bigint,
+            };
+          })
+          .filter((winner): winner is Winner => winner !== null) || [];
+
+      setWinners(validWinners);
     }
   }, [winnerHistoryData, winnerHistoryLoading, winners.length]);
 
@@ -139,35 +149,72 @@ const DiceGame: NextPage = () => {
           >
             Roll the dice!
           </button>
+
           <div className="mt-4 pt-2 flex flex-col items-center w-full justify-center border-t-4 border-primary">
             <span className="text-2xl">Rigged Roll</span>
             <div className="flex mt-2 items-center">
-              <span className="mr-2 text-lg">Address:</span>{" "}
-              <Address size="lg" address={riggedRollContract?.address} />{" "}
+              <span className="mr-2 text-lg">Address:</span>
+              <Address size="lg" address={riggedRollContract?.address} />
             </div>
             <div className="flex mt-1 items-center">
               <span className="text-lg mr-2">Balance:</span>
               <Amount amount={Number(riggedRollBalance?.formatted || 0)} showUsdPrice className="text-lg" />
             </div>
+
+            {/* Rigged Roll Button */}
+            <button
+              onClick={async () => {
+                if (!rolled) {
+                  setRolled(true);
+                }
+                setIsRolling(true);
+                try {
+                  await writeRiggedRollAsync({
+                    functionName: "riggedRoll",
+                  });
+                } catch (err) {
+                  console.error("Error calling riggedRoll function", err);
+                  immediateStopRolling();
+                }
+              }}
+              disabled={isRolling}
+              className="mt-2 btn btn-accent btn-xl normal-case font-xl text-lg"
+            >
+              🎯 Rigged Roll!
+            </button>
+
+            {/* Withdraw functionality */}
+            <div className="mt-4 flex flex-col items-center">
+              <span className="text-lg mb-2">Withdraw Winnings</span>
+              <div className="flex flex-col items-center gap-2">
+                <EtherInput
+                  value={withdrawAmount}
+                  onChange={amount => setWithdrawAmount(amount)}
+                  placeholder="Amount to withdraw"
+                />
+                <button
+                  onClick={async () => {
+                    try {
+                      if (withdrawAmount && address) {
+                        await writeRiggedRollAsync({
+                          functionName: "withdraw",
+                          args: [address, parseEther(withdrawAmount)],
+                        });
+                        setWithdrawAmount("");
+                      }
+                    } catch (err) {
+                      console.error("Error calling withdraw function", err);
+                    }
+                  }}
+                  disabled={!withdrawAmount || !address}
+                  className="btn btn-primary btn-sm"
+                >
+                  💰 Withdraw
+                </button>
+                <span className="text-xs text-gray-500">Only owner can withdraw</span>
+              </div>
+            </div>
           </div>
-          {/* <button
-            onClick={async () => {
-              if (!rolled) {
-                setRolled(true);
-              }
-              setIsRolling(true);
-              try {
-                await writeRiggedRollAsync({ functionName: "riggedRoll" });
-              } catch (err) {
-                console.error("Error calling riggedRoll function", err);
-                immediateStopRolling();
-              }
-            }}
-            disabled={isRolling}
-            className="mt-2 btn btn-secondary btn-xl normal-case font-xl text-lg"
-          >
-            Rigged Roll!
-          </button> */}
 
           <div className="flex mt-8">
             {rolled ? (

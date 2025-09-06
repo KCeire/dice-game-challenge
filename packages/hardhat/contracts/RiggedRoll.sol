@@ -49,4 +49,9 @@ contract RiggedRoll is Ownable {
     receive() external payable {
         console.log("RiggedRoll received:", msg.value, "wei from:", msg.sender);
     }
+
+    // Helper function to get contract balance
+    function getBalance() public view returns (uint256) {
+        return address(this).balance;
+    }
 }
