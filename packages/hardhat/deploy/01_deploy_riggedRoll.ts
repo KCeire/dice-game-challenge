@@ -10,22 +10,27 @@ const deployRiggedRoll: DeployFunction = async function (hre: HardhatRuntimeEnvi
   const diceGame: DiceGame = await ethers.getContract("DiceGame");
   const diceGameAddress = await diceGame.getAddress();
 
-  // Uncomment to deploy RiggedRoll contract
-  // await deploy("RiggedRoll", {
-  //   from: deployer,
-  //   log: true,
-  //   args: [diceGameAddress],
-  //   autoMine: true,
-  // });
+  // Deploy RiggedRoll contract
+  await deploy("RiggedRoll", {
+    from: deployer,
+    log: true,
+    args: [diceGameAddress],
+    autoMine: true,
+  });
 
-  // const riggedRoll: RiggedRoll = await ethers.getContract("RiggedRoll", deployer);
+  const riggedRoll: RiggedRoll = await ethers.getContract("RiggedRoll", deployer);
 
-  // Please replace the text "Your Address" with your own address.
-  // try {
-  //   await riggedRoll.transferOwnership("Your Address");
-  // } catch (err) {
-  //   console.log(err);
-  // }
+  // Transfer ownership to your frontend wallet address
+  // This address will be able to withdraw funds from the RiggedRoll contract
+  try {
+    await riggedRoll.transferOwnership("0xEe5fE4fB64003Fc1EA1Ed3927e8986C5FC2D04c6");
+    console.log("RiggedRoll deployed successfully!");
+    console.log("Ownership transferred to:", "0xEe5fE4fB64003Fc1EA1Ed3927e8986C5FC2D04c6");
+    console.log("Current owner:", await riggedRoll.owner());
+    console.log("DiceGame address:", diceGameAddress);
+  } catch (err) {
+    console.log(err);
+  }
 };
 
 export default deployRiggedRoll;
